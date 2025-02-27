@@ -713,7 +713,7 @@ async def luminant_command(bot: Client, m: Message):
         await m.reply_text(e)
 
 # Function to process a file
-  async def process_file(bot, m, links, b_name, count, end_count, raw_text2, res, CR, raw_text4, thumb, log_channel_id, my_name, overlay, accept_logs, collection):
+async def process_file(bot, m, links, b_name, count, end_count, raw_text2, res, CR, raw_text4, thumb, log_channel_id, my_name, overlay, accept_logs, collection):
     global bot_running
     global file_queue
 
