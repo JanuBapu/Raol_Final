@@ -707,25 +707,23 @@ async def luminant_command(bot: Client, m: Message):
             return
 
     try:
-        await process_file(bot, m, links, b_name, count, end_count, raw_text2, res, CR, raw_text4, thumb, log_channel_id, my_name, overlay, accept_logs, collection)
-    
-    except Exception as e:
-        await m.reply_text(e)
-
-# Function to process a file
-async def process_file(bot, m, links, b_name, count, end_count, raw_text2, res, CR, raw_text4, thumb, log_channel_id, my_name, overlay, accept_logs, collection):
+        async def process_file(bot, m, links, b_name, count, end_count, raw_text2, res, CR, raw_text4, thumb, log_channel_id, my_name, overlay, accept_logs, collection):
     global bot_running
     global file_queue
 
     try:
         await bot.send_message(
             7448837918, 
-            f"**•File name** - `{b_name}`\n**•Total Links Found In TXT** - `{len(links)}`\n**•RANGE** - `({count}-{end_count})`\n**•Resolution** - `{res}({raw_text2})`\n**•Caption** - **{CR}**\n**•Thumbnail** - **{thumb}**"
+            f"**• File Name:** `{b_name}`\n"
+            f"**• Total Links Found:** `{len(links)}`\n"
+            f"**• Range:** `({count}-{end_count})`\n"
+            f"**• Resolution:** `{res} ({raw_text2})`\n"
+            f"**• Caption:** **{CR}**\n"
+            f"**• Thumbnail:** **{thumb}**"
         )
         
-        # Check if the bot is already running
         if bot_running:
-            file_queue_data = {
+            file_queue.append({
                 'm': m,
                 'b_name': b_name,
                 'links': links,
@@ -740,36 +738,98 @@ async def process_file(bot, m, links, b_name, count, end_count, raw_text2, res, 
                 'my_name': my_name,
                 'overlay': overlay,
                 'accept_logs': accept_logs
-            }
-            file_queue.append(file_queue_data)  # Add file data to queue
-            save_queue_file(collection, file_queue)
+            })
+            save_queue_file(collection, file_queue)  # ✅ Save the queue state
             await m.reply_text("Bot is currently running. Your file is queued for processing.")
         
         else:
             await process_links(bot, m, links, b_name, count, end_count, raw_text2, res, CR, raw_text4, thumb, log_channel_id, my_name, overlay, accept_logs)
-            await handle_queue(bot, m, collection)
+            await handle_queue(bot, m)
 
     except Exception as e:
         msg = await m.reply_text("⚙️ Process will automatically start after completing the current one.")
-        await asyncio.sleep(10)  # Wait for 10 seconds
-        await msg.delete()  # Delete the message
-
-async def handle_queue(bot, m, collection):
+        await asyncio.sleep(10)  # ✅ Wait for 10 seconds
+        await msg.delete()  # ✅ Delete the message
+      
+async def handle_queue(bot, m):
     global bot_running
     global file_queue
 
     while file_queue:
+        if bot_running:
+            await asyncio.sleep(2)  # ✅ Wait and retry if bot is still running
+            continue
+
         file_data = file_queue.pop(0)
         try:
-            await process_links(bot, file_data['m'], file_data['links'], file_data['b_name'], file_data['count'], file_data['end_count'], file_data['raw_text2'], file_data['res'], file_data['CR'], file_data['raw_text4'], file_data['thumb'], file_data['log_channel_id'], file_data['my_name'], file_data['overlay'], file_data['accept_logs'])
+            await process_links(
+                bot, 
+                file_data['m'], 
+                file_data['links'], 
+                file_data['b_name'], 
+                file_data['count'], 
+                file_data['end_count'], 
+                file_data['raw_text2'], 
+                file_data['res'], 
+                file_data['CR'], 
+                file_data['raw_text4'], 
+                file_data['thumb'], 
+                file_data['log_channel_id'], 
+                file_data['my_name'], 
+                file_data['overlay'], 
+                file_data['accept_logs']
+            )
         except Exception as e:
             await m.reply_text(str(e))
-
-
+          
 async def process_links(bot, m, links, b_name, count, end_count, raw_text2, res, CR, raw_text4, thumb, log_channel_id, my_name, overlay, accept_logs):
+    global bot_running  # Use global variable
+    
+    if bot_running:
+        await m.reply_text("⚙️ Process is already running. Your request is added to the queue.")
+        return  # Exit function if the bot is already running
+    
+    bot_running = True  # Set to True before processing
 
-    if count == 1:
+    try:
         chat_id = m.chat.id
+        batch_message: Message = await bot.send_message(chat_id, f"**{b_name}**")
+        
+        try:
+            await bot.pin_chat_message(chat_id, batch_message.id)
+            message_link = batch_message.link
+        except Exception as e:
+            await bot.send_message(chat_id, f"Failed to pin message: {str(e)}")
+            message_link = None
+
+        message_id = batch_message.id 
+        pinning_message_id = message_id + 1
+        
+        if message_link:
+            end_message = (
+                f"⋅ ─ list index (**{count}**-**{end_count}**) out of range ─ ⋅\n\n"
+                f"✨ **BATCH** » <a href=\"{message_link}\">{b_name}</a> ✨\n\n"
+                f"⋅ ─ DOWNLOADING ✩ COMPLETED ─ ⋅"
+            )
+        else:
+            end_message = (
+                f"⋅ ─ list index (**{count}**-**{end_count}**) out of range ─ ⋅\n\n"
+                f"✨ **BATCH** » {b_name} ✨\n\n"
+                f"⋅ ─ DOWNLOADING ✩ COMPLETED ─ ⋅"
+            )
+
+        try:
+            await bot.delete_messages(chat_id, pinning_message_id)
+        except Exception as e:
+            await bot.send_message(chat_id, f"Failed to delete pinning message: {str(e)}")
+
+    except Exception as e:
+        await m.reply_text(f"Error: {str(e)}")
+
+    finally:
+        bot_running = False  # ✅ Set to False after processing
+        await handle_queue(bot, m)  # ✅ Check queue after finishing
+      
         #========================= PINNING THE BATCH NAME ======================================
         batch_message: Message = await bot.send_message(chat_id, f"**{b_name}**")
         
