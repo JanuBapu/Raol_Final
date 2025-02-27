@@ -789,53 +789,9 @@ async def handle_queue(bot, m):
             await m.reply_text(str(e))
           
 async def process_links(bot, m, links, b_name, count, end_count, raw_text2, res, CR, raw_text4, thumb, log_channel_id, my_name, overlay, accept_logs):
-    global bot_running  # Use global variable
-    
-    if bot_running:
-        await m.reply_text("⚙️ Process is already running. Your request is added to the queue.")
-        return  # Exit function if the bot is already running
-    
-    bot_running = True  # Set to True before processing
-
-    try:
+  
+    if count == 1:
         chat_id = m.chat.id
-        batch_message: Message = await bot.send_message(chat_id, f"**{b_name}**")
-        
-        try:
-            await bot.pin_chat_message(chat_id, batch_message.id)
-            message_link = batch_message.link
-        except Exception as e:
-            await bot.send_message(chat_id, f"Failed to pin message: {str(e)}")
-            message_link = None
-
-        message_id = batch_message.id 
-        pinning_message_id = message_id + 1
-        
-        if message_link:
-            end_message = (
-                f"⋅ ─ list index (**{count}**-**{end_count}**) out of range ─ ⋅\n\n"
-                f"✨ **BATCH** » <a href=\"{message_link}\">{b_name}</a> ✨\n\n"
-                f"⋅ ─ DOWNLOADING ✩ COMPLETED ─ ⋅"
-            )
-        else:
-            end_message = (
-                f"⋅ ─ list index (**{count}**-**{end_count}**) out of range ─ ⋅\n\n"
-                f"✨ **BATCH** » {b_name} ✨\n\n"
-                f"⋅ ─ DOWNLOADING ✩ COMPLETED ─ ⋅"
-            )
-
-        try:
-            await bot.delete_messages(chat_id, pinning_message_id)
-        except Exception as e:
-            await bot.send_message(chat_id, f"Failed to delete pinning message: {str(e)}")
-
-    except Exception as e:
-        await m.reply_text(f"Error: {str(e)}")
-
-    finally:
-        bot_running = False  # ✅ Set to False after processing
-        await handle_queue(bot, m)  # ✅ Check queue after finishing
-      
         #========================= PINNING THE BATCH NAME ======================================
         batch_message: Message = await bot.send_message(chat_id, f"**{b_name}**")
         
